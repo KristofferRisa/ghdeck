@@ -1,0 +1,59 @@
+name: release
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-musl, zig: true }
+          - { os: ubuntu-latest, target: aarch64-unknown-linux-musl, zig: true }
+          - { os: macos-latest, target: aarch64-apple-darwin }
+          - { os: macos-latest, target: x86_64-apple-darwin }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Install zig
+        if: matrix.zig
+        run: pip install ziglang cargo-zigbuild
+      - name: Build (zig)
+        if: matrix.zig
+        run: cargo zigbuild --release --target ${{ matrix.target }}
+      - name: Build
+        if: ${{ !matrix.zig }}
+        run: cargo build --release --target ${{ matrix.target }}
+      - name: Package
+        shell: bash
+        run: |
+          name=ghdeck-${GITHUB_REF_NAME}-${{ matrix.target }}
+          bin=target/${{ matrix.target }}/release/ghdeck
+          [ -f "$bin.exe" ] && bin="$bin.exe"
+          mkdir -p dist && cp "$bin" README.md dist/
+          tar -czf "$name.tar.gz" -C dist .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: ghdeck-*.tar.gz
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" ghdeck-*.tar.gz --repo "$GITHUB_REPOSITORY" --generate-notes

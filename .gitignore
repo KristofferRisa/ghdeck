@@ -1,0 +1,5 @@
+/target
+.playwright-mcp/
+.claude/
+.vs/
+.vscode/

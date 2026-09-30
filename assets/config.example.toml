@@ -1,0 +1,110 @@
+#  ▄▀  █▄█ █▀▄ ██▀ ▄▀▀ █▄▀
+#  ▀▄█ █ █ █▄▀ █▄▄ ▀▄▄ █ █   ghdeck: GitHub at a glance
+#
+# Location: ~/.config/ghdeck/config.toml  (or $XDG_CONFIG_HOME/ghdeck/config.toml)
+# Edit from inside ghdeck with <space>c. The file is reloaded when you close the editor.
+
+[general]
+refresh_secs      = 60           # full refresh of repos, runs, deployments, PRs and issues
+fast_refresh_secs = 15           # re-poll repos that have running workflows
+slow_refresh_secs = 600          # trending/top repos, repo index, contribution calendar
+theme             = "tokyonight" # tokyonight | catppuccin | gruvbox | kanagawa  (cycle with <space>t)
+icons             = "nerd"       # nerd (needs a Nerd Font) | unicode
+transparent       = false        # true = keep the terminal background
+concurrency       = 8            # max parallel API requests
+runs_per_repo     = 20
+# default_host    = "github"     # name of the host to open on start (else the first one)
+# editor          = "nvim"       # else $VISUAL / $EDITOR / nvim
+log_level         = "info"       # error | warn | info | debug (every request) · env GHDECK_LOG overrides
+                                 # log: ~/.local/state/ghdeck/ghdeck.log  (`ghdeck log-path`)
+
+# ── Hosts ──────────────────────────────────────────────────────────────────────
+# One block per GitHub instance. Switch with H or <space>h.
+# The token comes from (in order): token_env → token_cmd → `gh auth token --hostname <host>`
+#   → GH_TOKEN/GITHUB_TOKEN (github.com) or GH_ENTERPRISE_TOKEN (enterprise).
+# Never put a token directly in this file.
+#
+# API endpoints are derived from `host`:
+#   github.com   → https://api.github.com
+#   *.ghe.com    → https://api.<host>          (GitHub Enterprise Cloud with data residency)
+#   anything else→ https://<host>/api/v3       (GitHub Enterprise Server)
+# Override with api_url if needed.
+
+[[hosts]]
+name       = "github"
+host       = "github.com"
+repos      = []            # pinned repos, always shown first: ["owner/repo", ...]
+local_dirs = []            # watch what you have cloned, e.g. ["~/code"] (rescanned every refresh)
+orgs       = []            # include the most recently pushed repos of these orgs
+auto_repos = 10            # also include your N most recently pushed repos
+org_repos  = 10            # N repos per org
+# token_env = "GHDECK_GITHUB_TOKEN"
+# token_cmd = "pass show github/token"
+# trending_query = "created:>{since:7d} stars:>20"
+# top_query      = "language:rust stars:>5000"
+
+# [[hosts]]
+# name  = "work"
+# host  = "mycompany.ghe.com"
+# orgs  = ["my-org"]
+# repos = ["my-org/api", "my-org/web"]
+# top_query      = "org:my-org stars:>=1"
+# trending_query = "org:my-org pushed:>{since:7d}"
+
+# ── Deployments ───────────────────────────────────────────────────────────────
+# Each tier becomes a column in the deploy matrix. A tier status is the NEWEST of:
+#   environments → GitHub Environments / Deployments API (glob, case-insensitive)
+#   workflows    → workflow runs whose name or file matches (glob)
+#   release      → "latest" (newest non-prerelease) | "prerelease" (newest prerelease)
+
+[[deploy.tiers]]
+name         = "prod"
+environments = ["prod", "production", "prd", "prod-*"]
+workflows    = ["*deploy*prod*", "*release*"]
+release      = "latest"
+
+[[deploy.tiers]]
+name         = "test"
+environments = ["test", "staging", "stage", "qa", "test-*"]
+workflows    = ["*deploy*test*", "*deploy*stag*"]
+release      = "prerelease"
+
+# [[deploy.tiers]]
+# name         = "dev"
+# environments = ["dev", "development"]
+
+# ── Sections (like gh-dash) ───────────────────────────────────────────────────
+# GitHub search syntax. @me is replaced with your login. The first section also
+# appears on the dashboard.
+
+[[sections.pulls]]
+title  = "Review requested"
+filter = "is:open is:pr review-requested:@me archived:false"
+
+[[sections.pulls]]
+title  = "Mine"
+filter = "is:open is:pr author:@me archived:false"
+
+[[sections.pulls]]
+title  = "Involved"
+filter = "is:open is:pr involves:@me -author:@me archived:false"
+
+[[sections.issues]]
+title  = "Assigned"
+filter = "is:open is:issue assignee:@me archived:false"
+
+[[sections.issues]]
+title  = "Created"
+filter = "is:open is:issue author:@me archived:false"
+
+[[sections.issues]]
+title  = "Mentioned"
+filter = "is:open is:issue mentions:@me archived:false"
+
+# ── Explore ───────────────────────────────────────────────────────────────────
+# {since:7d} expands to a date (units: d, w, m). Hosts can override with
+# trending_query / top_query.
+[explore]
+trending_query = "created:>{since:7d} stars:>5"
+top_query      = "stars:>1000"
+limit          = 30
